@@ -1,0 +1,8 @@
+{
+    "name": "neo-site-builder",
+    "description": "Builds and deploys simple websites for users.",
+    "version": "0.0.1",
+    "entry": "backend/index.js",
+    "type": "http"
+  }
+  
