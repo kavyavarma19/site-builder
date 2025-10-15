@@ -7,20 +7,24 @@ dotenv.config();
 const app = express();
 app.use(bodyParser.json());
 
-// Discovery endpoint for MCP registration
-app.get('/', (req, res) => {
-  res.json({
-    name: "Neo Site Builder",
-    description: "Generates and deploys websites via Vercel",
-    endpoints: [
-      {
-        path: "/api/createWebsite",
-        method: "POST",
-        description: "Creates a website with the given name, theme, and domain"
-      }
-    ]
-  });
-});
+// Discovery information (reuse for multiple endpoints)
+const discoveryInfo = {
+  name: "Neo Site Builder",
+  description: "Generates and deploys websites via Vercel",
+  endpoints: [
+    {
+      path: "/api/createWebsite",
+      method: "POST",
+      description: "Creates a website with the given name, theme, and domain"
+    }
+  ]
+};
+
+// Root endpoint
+app.get('/', (req, res) => res.json(discoveryInfo));
+
+// MCP JSON endpoint
+app.get('/mcp/json', (req, res) => res.json(discoveryInfo));
 
 // Main API endpoint
 app.post('/api/createWebsite', async (req, res) => {
@@ -63,7 +67,12 @@ app.post('/api/createWebsite', async (req, res) => {
   }
 });
 
-// Catch unhandled promise rejections globally
+// Catch-all for unhandled routes
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: "Endpoint not found" });
+});
+
+// Global unhandled promise rejection handler
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });

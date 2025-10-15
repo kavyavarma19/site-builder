@@ -4,10 +4,7 @@
       { "src": "backend/index.js", "use": "@vercel/node" }
     ],
     "routes": [
-      { "src": "/mcp.json", "dest": "/mcp.json" },
-      { "src": "/", "dest": "backend/index.js" },
-      { "src": "/api/(.*)", "dest": "backend/index.js" }
-    ],
-    "includeFiles": ["mcp.json"]
+      { "src": "/(.*)", "dest": "backend/index.js" }
+    ]
   }
   
