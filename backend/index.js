@@ -23,8 +23,8 @@ const discoveryInfo = {
 // Root endpoint
 app.get('/', (req, res) => res.json(discoveryInfo));
 
-// MCP JSON endpoint
-app.get('/mcp/json', (req, res) => res.json(discoveryInfo));
+// MCP JSON endpoints (supports both URL variants)
+app.get(['/mcp/json', '/mcp.json'], (req, res) => res.json(discoveryInfo));
 
 // Main API endpoint
 app.post('/api/createWebsite', async (req, res) => {
