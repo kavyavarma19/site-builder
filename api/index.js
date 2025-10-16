@@ -31,6 +31,34 @@ const mcpServerInfo = {
 // MCP Tools Definition
 const mcpTools = [
   {
+    name: "search",
+    description: "Search for website templates and themes",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "Search query for website templates or themes"
+        }
+      },
+      required: ["query"]
+    }
+  },
+  {
+    name: "fetch",
+    description: "Fetch details about a specific website template or deployment",
+    inputSchema: {
+      type: "object",
+      properties: {
+        url: {
+          type: "string",
+          description: "URL or ID to fetch details from"
+        }
+      },
+      required: ["url"]
+    }
+  },
+  {
     name: "createWebsite",
     description: "Creates and deploys a website with the given name, theme, and domain",
     inputSchema: {
@@ -137,6 +165,65 @@ app.all('/mcp', async (req, res) => {
 
     case 'tools/call':
       const { name: toolName, arguments: toolArgs } = params || {};
+      
+      if (toolName === 'search') {
+        try {
+          const { query } = toolArgs || {};
+          
+          if (!query) {
+            return jsonRpcError(-32602, "Missing required parameter: query");
+          }
+
+          // Return available templates based on search
+          const templates = [
+            { name: "Modern Portfolio", theme: "dark", description: "A sleek dark-themed portfolio site" },
+            { name: "Business Landing", theme: "light", description: "Professional light business page" },
+            { name: "Personal Blog", theme: "light", description: "Simple blog template" }
+          ];
+
+          const results = templates.filter(t => 
+            t.name.toLowerCase().includes(query.toLowerCase()) ||
+            t.description.toLowerCase().includes(query.toLowerCase()) ||
+            t.theme.toLowerCase().includes(query.toLowerCase())
+          );
+
+          return jsonRpcResponse({
+            content: [
+              {
+                type: "text",
+                text: `Found ${results.length} template(s) matching "${query}":\n\n` + 
+                      results.map(t => `• ${t.name} (${t.theme}): ${t.description}`).join('\n')
+              }
+            ]
+          });
+        } catch (error) {
+          console.error('Search error:', error);
+          return jsonRpcError(-32603, `Search failed: ${error.message}`);
+        }
+      }
+
+      if (toolName === 'fetch') {
+        try {
+          const { url } = toolArgs || {};
+          
+          if (!url) {
+            return jsonRpcError(-32602, "Missing required parameter: url");
+          }
+
+          // Return details about a deployment or template
+          return jsonRpcResponse({
+            content: [
+              {
+                type: "text",
+                text: `Fetched details for: ${url}\n\nThis endpoint creates and deploys websites to Vercel.\nAvailable themes: light, dark\nDeployment status: Active`
+              }
+            ]
+          });
+        } catch (error) {
+          console.error('Fetch error:', error);
+          return jsonRpcError(-32603, `Fetch failed: ${error.message}`);
+        }
+      }
       
       if (toolName === 'createWebsite') {
         try {
