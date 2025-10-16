@@ -5,26 +5,155 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
+
+// Enable CORS for all origins (required for ChatGPT MCP)
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(bodyParser.json());
 
-// Discovery information (reuse for multiple endpoints)
-const discoveryInfo = {
+// MCP Server Configuration
+const mcpServerInfo = {
   name: "Neo Site Builder",
   description: "Generates and deploys websites via Vercel",
-  endpoints: [
-    {
-      path: "/api/createWebsite",
-      method: "POST",
-      description: "Creates a website with the given name, theme, and domain"
-    }
-  ]
+  version: "1.0.0"
 };
 
-// Root endpoint
-app.get('/', (req, res) => res.json(discoveryInfo));
+// MCP Tools Definition
+const mcpTools = [
+  {
+    name: "createWebsite",
+    description: "Creates and deploys a website with the given name, theme, and domain",
+    inputSchema: {
+      type: "object",
+      properties: {
+        site_name: {
+          type: "string",
+          description: "The name of the website to create"
+        },
+        theme: {
+          type: "string",
+          enum: ["light", "dark"],
+          description: "The theme for the website (light or dark)"
+        },
+        domain: {
+          type: "string",
+          description: "Optional custom domain for the website"
+        }
+      },
+      required: ["site_name", "theme"]
+    }
+  }
+];
 
-// MCP JSON endpoints (supports both URL variants)
-app.get(['/mcp/json', '/mcp.json'], (req, res) => res.json(discoveryInfo));
+// Root endpoint - Return MCP server info
+app.get('/', (req, res) => {
+  res.json({
+    ...mcpServerInfo,
+    endpoints: ["/mcp"]
+  });
+});
+
+// MCP endpoint - Main protocol handler
+app.all('/mcp', async (req, res) => {
+  // Handle JSON-RPC 2.0 requests
+  const { method, params, id, jsonrpc } = req.body || {};
+
+  // Log incoming request for debugging
+  console.log('MCP Request:', { method, params, id });
+
+  // JSON-RPC response helper
+  const jsonRpcResponse = (result) => {
+    return res.json({
+      jsonrpc: "2.0",
+      id: id || null,
+      result
+    });
+  };
+
+  const jsonRpcError = (code, message) => {
+    return res.json({
+      jsonrpc: "2.0",
+      id: id || null,
+      error: { code, message }
+    });
+  };
+
+  // Handle different MCP methods
+  switch (method) {
+    case 'initialize':
+      return jsonRpcResponse({
+        protocolVersion: "2024-11-05",
+        capabilities: {
+          tools: {}
+        },
+        serverInfo: mcpServerInfo
+      });
+
+    case 'tools/list':
+      return jsonRpcResponse({
+        tools: mcpTools
+      });
+
+    case 'tools/call':
+      const { name: toolName, arguments: toolArgs } = params || {};
+      
+      if (toolName === 'createWebsite') {
+        try {
+          const { site_name, theme, domain } = toolArgs || {};
+          
+          if (!site_name || !theme) {
+            return jsonRpcError(-32602, "Missing required parameters: site_name and theme");
+          }
+
+          // Generate site
+          const files = await generateSite({ site_name, theme });
+          
+          // Deploy to Vercel
+          const deployResult = await deployToVercel({
+            files,
+            name: site_name,
+            domain,
+            token: process.env.VERCEL_TOKEN
+          });
+
+          return jsonRpcResponse({
+            content: [
+              {
+                type: "text",
+                text: `✅ Website created successfully!\n\nSite URL: ${deployResult.url}\nTheme: ${theme}\nName: ${site_name}`
+              }
+            ]
+          });
+        } catch (error) {
+          console.error('Tool call error:', error);
+          return jsonRpcError(-32603, `Failed to create website: ${error.message}`);
+        }
+      }
+      
+      return jsonRpcError(-32601, `Unknown tool: ${toolName}`);
+
+    default:
+      return jsonRpcError(-32601, `Method not found: ${method}`);
+  }
+});
+
+// Legacy endpoint for backwards compatibility
+app.get('/mcp.json', (req, res) => {
+  res.json({
+    ...mcpServerInfo,
+    endpoints: ["/mcp"]
+  });
+});
 
 // Main API endpoint
 app.post('/api/createWebsite', async (req, res) => {
