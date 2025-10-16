@@ -80,7 +80,13 @@ app.all('/mcp', async (req, res) => {
   const { method, params, id, jsonrpc } = req.body || {};
 
   // Log incoming request for debugging
-  console.log('MCP Request:', { method, params, id });
+  console.log('MCP Request:', { 
+    method, 
+    params, 
+    id,
+    headers: req.headers,
+    body: req.body 
+  });
 
   // JSON-RPC response helper
   const jsonRpcResponse = (result) => {
@@ -99,21 +105,35 @@ app.all('/mcp', async (req, res) => {
     });
   };
 
+  // Handle notifications (no response needed for methods without id)
+  if (!id && id !== 0) {
+    console.log('Received notification (no response needed):', method);
+    return res.status(200).end();
+  }
+
   // Handle different MCP methods
   switch (method) {
     case 'initialize':
       return jsonRpcResponse({
         protocolVersion: "2024-11-05",
         capabilities: {
-          tools: {}
+          tools: {},
+          logging: {}
         },
         serverInfo: mcpServerInfo
       });
+
+    case 'initialized':
+      // This is a notification after initialize succeeds
+      return res.status(200).end();
 
     case 'tools/list':
       return jsonRpcResponse({
         tools: mcpTools
       });
+
+    case 'ping':
+      return jsonRpcResponse({ status: "ok" });
 
     case 'tools/call':
       const { name: toolName, arguments: toolArgs } = params || {};
