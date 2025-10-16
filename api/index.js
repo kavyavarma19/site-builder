@@ -1,6 +1,5 @@
 import express from 'express';
 import bodyParser from 'body-parser';
-import { generateSite, deployToVercel } from './services.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -93,6 +92,10 @@ app.get('/', (req, res) => {
 
 // MCP endpoint - Main protocol handler
 app.all('/mcp', async (req, res) => {
+  // Set headers for fast response
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'no-cache');
+  
   // Handle GET requests (for browser/discovery)
   if (req.method === 'GET') {
     return res.json({
@@ -107,14 +110,8 @@ app.all('/mcp', async (req, res) => {
   // Handle JSON-RPC 2.0 requests (POST)
   const { method, params, id, jsonrpc } = req.body || {};
 
-  // Log incoming request for debugging
-  console.log('MCP Request:', { 
-    method, 
-    params, 
-    id,
-    headers: req.headers,
-    body: req.body 
-  });
+  // Quick logging
+  console.log('MCP:', method, id);
 
   // JSON-RPC response helper
   const jsonRpcResponse = (result) => {
@@ -283,6 +280,9 @@ app.all('/mcp', async (req, res) => {
           if (!site_name || !theme) {
             return jsonRpcError(-32602, "Missing required parameters: site_name and theme");
           }
+
+          // Lazy load services only when needed
+          const { generateSite, deployToVercel } = await import('./services.js');
 
           // Generate site
           const files = await generateSite({ site_name, theme });
