@@ -10,6 +10,12 @@
       "maxDuration": 30,
       "memory": 1024
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/ping",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }
   
