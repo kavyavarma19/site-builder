@@ -65,7 +65,18 @@ app.get('/', (req, res) => {
 
 // MCP endpoint - Main protocol handler
 app.all('/mcp', async (req, res) => {
-  // Handle JSON-RPC 2.0 requests
+  // Handle GET requests (for browser/discovery)
+  if (req.method === 'GET') {
+    return res.json({
+      ...mcpServerInfo,
+      protocol: "MCP",
+      transport: "HTTP with JSON-RPC 2.0",
+      endpoint: "/mcp",
+      usage: "POST JSON-RPC 2.0 requests to this endpoint"
+    });
+  }
+
+  // Handle JSON-RPC 2.0 requests (POST)
   const { method, params, id, jsonrpc } = req.body || {};
 
   // Log incoming request for debugging
