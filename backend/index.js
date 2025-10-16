@@ -77,6 +77,5 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`MCP server listening on port ${PORT}`));
+// Export for Vercel serverless (instead of app.listen)
+export default app;
