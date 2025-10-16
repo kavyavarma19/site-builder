@@ -46,16 +46,16 @@ const mcpTools = [
   },
   {
     name: "fetch",
-    description: "Fetch details about a specific website template or deployment",
+    description: "Fetch complete details about a specific website template by ID",
     inputSchema: {
       type: "object",
       properties: {
-        url: {
+        id: {
           type: "string",
-          description: "URL or ID to fetch details from"
+          description: "Template ID to fetch details for (e.g., template-1, template-2, template-3)"
         }
       },
-      required: ["url"]
+      required: ["id"]
     }
   },
   {
@@ -174,25 +174,45 @@ app.all('/mcp', async (req, res) => {
             return jsonRpcError(-32602, "Missing required parameter: query");
           }
 
-          // Return available templates based on search
+          // Search through available templates
           const templates = [
-            { name: "Modern Portfolio", theme: "dark", description: "A sleek dark-themed portfolio site" },
-            { name: "Business Landing", theme: "light", description: "Professional light business page" },
-            { name: "Personal Blog", theme: "light", description: "Simple blog template" }
+            { 
+              id: "template-1", 
+              name: "Modern Portfolio", 
+              theme: "dark", 
+              description: "A sleek dark-themed portfolio site with modern animations" 
+            },
+            { 
+              id: "template-2", 
+              name: "Business Landing", 
+              theme: "light", 
+              description: "Professional light business page with call-to-action sections" 
+            },
+            { 
+              id: "template-3", 
+              name: "Personal Blog", 
+              theme: "light", 
+              description: "Simple and clean blog template for personal content" 
+            }
           ];
 
           const results = templates.filter(t => 
             t.name.toLowerCase().includes(query.toLowerCase()) ||
             t.description.toLowerCase().includes(query.toLowerCase()) ||
             t.theme.toLowerCase().includes(query.toLowerCase())
-          );
+          ).map(t => ({
+            id: t.id,
+            title: t.name,
+            text: t.description,
+            url: `https://kavyavarma19-tir8.vercel.app/templates/${t.id}`
+          }));
 
+          // Return in ChatGPT MCP format
           return jsonRpcResponse({
             content: [
               {
                 type: "text",
-                text: `Found ${results.length} template(s) matching "${query}":\n\n` + 
-                      results.map(t => `• ${t.name} (${t.theme}): ${t.description}`).join('\n')
+                text: JSON.stringify({ results })
               }
             ]
           });
@@ -204,18 +224,49 @@ app.all('/mcp', async (req, res) => {
 
       if (toolName === 'fetch') {
         try {
-          const { url } = toolArgs || {};
+          const { id } = toolArgs || {};
           
-          if (!url) {
-            return jsonRpcError(-32602, "Missing required parameter: url");
+          if (!id) {
+            return jsonRpcError(-32602, "Missing required parameter: id");
           }
 
-          // Return details about a deployment or template
+          // Template database
+          const templates = {
+            "template-1": {
+              id: "template-1",
+              title: "Modern Portfolio",
+              text: "A sleek dark-themed portfolio site with modern animations, responsive design, and smooth scrolling. Perfect for showcasing creative work, photography, or design projects. Features include: hero section with animated background, project gallery with hover effects, about section, contact form, and social media integration.",
+              url: "https://kavyavarma19-tir8.vercel.app/templates/template-1",
+              metadata: { theme: "dark", type: "portfolio" }
+            },
+            "template-2": {
+              id: "template-2",
+              title: "Business Landing",
+              text: "Professional light business page with call-to-action sections, testimonials, and pricing tables. Ideal for startups, SaaS products, or service businesses. Includes: compelling hero with CTA buttons, feature showcase grid, customer testimonials carousel, pricing comparison table, FAQ section, and newsletter signup.",
+              url: "https://kavyavarma19-tir8.vercel.app/templates/template-2",
+              metadata: { theme: "light", type: "business" }
+            },
+            "template-3": {
+              id: "template-3",
+              title: "Personal Blog",
+              text: "Simple and clean blog template for personal content, articles, and stories. Minimalist design focused on readability and content. Features: clean typography, article cards with featured images, categories and tags, author bio section, search functionality, and RSS feed support.",
+              url: "https://kavyavarma19-tir8.vercel.app/templates/template-3",
+              metadata: { theme: "light", type: "blog" }
+            }
+          };
+
+          const template = templates[id];
+          
+          if (!template) {
+            return jsonRpcError(-32602, `Template not found: ${id}`);
+          }
+
+          // Return in ChatGPT MCP format
           return jsonRpcResponse({
             content: [
               {
                 type: "text",
-                text: `Fetched details for: ${url}\n\nThis endpoint creates and deploys websites to Vercel.\nAvailable themes: light, dark\nDeployment status: Active`
+                text: JSON.stringify(template)
               }
             ]
           });
